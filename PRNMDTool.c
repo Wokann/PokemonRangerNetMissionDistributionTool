@@ -2,171 +2,347 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
+#include <stdint.h>
 
+#include ".\i18n.h"
 #include ".\DataOfRanger1_jp.h"
 #include ".\DataOfRanger2.h"
 #include ".\DataOfRanger3_jp.h"
 #include ".\DataOfRanger3_oversea.h"
-void insertData(const char *filename, const unsigned char *data, size_t dataSize, long position);
-unsigned char IsStringExisted(const char *filename,char initGameMark[],unsigned char LengthOfGameMark,unsigned int SearchOffset);
+
+void insertData(const char *filename, const unsigned char *data, size_t dataSize, long position, int ToolLanguage);
 int crc16_table[];
 unsigned int CRC16(char *data, int size);
-void RangerCrypt(unsigned int *data, int size);
-void CryptRanger1jp(const char *filename);
-void DistributeRanger1jpMission(const char *filename);
-void DistributeRanger23Mission(const char *filename,char initGameMark[],unsigned char LengthOfGameMark,unsigned int BaseOffset,unsigned int BlockSize,const unsigned char *const Mission[],unsigned char BlockSet[]);
+void ChunkCrypt(unsigned int *data, int size);
+void CryptRanger1(const char *filename,int ToolLanguage);
+unsigned char GetR1Flag(const char *filename, unsigned int FlagType,int ToolLanguage);
+unsigned int DistributeRanger1jpMission(const char *filename,int ToolLanguage);
+unsigned int DistributeRanger23Mission(const char *filename,char initGameMark[],unsigned int BaseOffset,unsigned int BlockSize,const unsigned char *const Mission[],unsigned char BlockSet[],int ToolLanguage);
+void CreateInitialSave(int ToolLanguage,int InitialSaveType);
+unsigned int RNG();
+unsigned int GenerateR1Seed();
+unsigned int GenerateR1Time(const char *filename,int ToolLanguage);
+unsigned short GenerateR1Date(const char *filename,int ToolLanguage);
+unsigned int ManaphyMissionReset(const char *filename,int ToolLanguage);
 
-int main(int argc, char *argv[]) {
+#define GAME_VERSION_RANGER1  1
+#define GAME_VERSION_RANGER2  2
+#define GAME_VERSION_RANGER3  3
+
+#define GAME_LANGUAGE_JP      1
+#define GAME_LANGUAGE_OVERSEA 2
+#define GAME_LANGUAGE_US_EN   3
+#define GAME_LANGUAGE_EU_EN   4
+#define GAME_LANGUAGE_EU_FR   5
+#define GAME_LANGUAGE_EU_IT   6
+#define GAME_LANGUAGE_EU_DE   7
+#define GAME_LANGUAGE_EU_SP   8
+
+int main(int argc, char *argv[]) 
+{
     //system("chcp 65001");
     printf("*-------------------------------------------------------------*\n");
-    printf("| 宝可梦巡护员网络任务配信器 v0.1            ——卧看微尘制作 |\n");
-    printf("| PokemonRangerNetMissionDistributionTool v0.1 made by wokann |\n");
-    printf("|                                                  2023.12.10 |\n");
+    printf("| 宝可梦巡护员网络任务配信器 v1.0            ——卧看微尘制作 |\n");
+    printf("| PokemonRangerNetMissionDistributionTool v1.0 made by wokann |\n");
+    printf("|                                                  2023.12.18 |\n");
     printf("*-------------------------------------------------------------*\n\n");
-
-    if (argc != 5) 
-    {
-        printf("警告：请输入游戏版本、游戏语言、存档名、另存为存档名。\n");
-        printf("用法: PRNMDTool.exe [-r1/-r2/-r3] [-jp/-oversea] [originfilename] [newfilename]\n\n");
-        printf("Warning: Please input gameversion, gamelanguage, sav file name, new name you want to save sav file as.\n");
-        printf("Usage: PRNMDTool.exe [-r1/-r2/-r3] [-jp/-oversea] [originfilename] [newfilename]\n");
-        printf("\n\n按下回车键退出程序...\n");
-        printf("Press Enter to exit...\n");
-        getchar(); // 等待用户按下回车键
-        return 1;
-    }
     
-    const char *GameVersion     = argv[1];
-    const char *GameLanguage    = argv[2];
-    const char *originfilename  = argv[3];
-    const char *newfilename     = argv[4];
-    //拷贝旧文件至另存文件
-    FILE *originalFile, *newFile;
-    originalFile = fopen(originfilename, "rb");
-    if (originalFile == NULL) 
+    int ToolLanguage = -1;
+    while(1)
     {
-        printf("无法打开文件 \"%s\" 。\n请尝试缩减文件名的字数，并移除文件名中的空格。\n\n", originfilename);
-        printf("Can not open file \"%s\" .\nPlease try shortening the file name and removing spaces from the name.\n\n\n", originfilename);
-        return 1;
-    }
-    newFile = fopen(newfilename, "wb");
-    if (newFile == NULL) 
-    {
-        printf("无法创建另存文件 \"%s\" 。\n请尝试缩减文件名的字数，并移除文件名中的空格。\n\n", newfilename);
-        printf("Can not create new file \"%s\" .\nPlease try shortening the file name and removing spaces from the name.\n\n\n", newfilename);
-        return 1;
-    }
-    char buffer[1024];
-    size_t bytesRead;
-    while ((bytesRead = fread(buffer, 1, sizeof(buffer), originalFile)) > 0) {
-        fwrite(buffer, 1, bytesRead, newFile);
-    }
-    fclose(originalFile);
-    fclose(newFile);
-
-    //根据版本及语言进行配信
-    if(!strcmp(GameVersion, "-r1"))
-    {
-        if(!strcmp(GameLanguage, "-jp"))
-        {   
-            CryptRanger1jp(newfilename);
-            //DistributeRanger1jpMission(newfilename);
-            CryptRanger1jp(newfilename);
-            printf("Ranger1-jp的4个任务配信完成。\n详见文件 \"%s\" 。\n\n", newfilename);
-            printf("4 missions of Ranger1-jp have been distributed.\nSee file \"%s\" .\n", newfilename);
-        }
-        else if(!strcmp(GameLanguage, "-oversea"))
+        for(int i = 0; i < TOOL_LANGUAGE_COUNTS;i++)
         {
-            printf("注：巡护员1代海外版无需通过配信获取任务。\n");
-            printf("　　一周目通关后将自动开启3个任务，需依次完成上一个任务后才能开启下一个任务。\n");
-            printf("　　一周目通关后在巡护员网络界面按下“R+X+LEFT”可激活输入密码选项。\n\n");
-            printf("　　在密码界面输入以下密码可开启玛纳霏任务：\n");
-            printf("　　*北美版　　　　：P8M2-9D6F-43H7\n");
-            printf("　　*欧洲英文版　　：Mg35-Cpb8-4FW8\n");
-            printf("　　*欧洲法文版　　：DY4g-k28S-QB9F\n");
-            printf("　　*欧洲德文版　　：R3d4-cv2S-WC7W\n");
-            printf("　　*欧洲西班牙文版：C58f-t3WT-Vn79\n");
-            printf("　　*欧洲意大利文版：FH38-fwD8-5S2a\n\n\n");
-            printf("Note: Ranger1 oversea don't need to be distributed mission.\n");
-            printf("      After finishing the first game, Ranger Net will auto boot 3 missions, which you should finish the previous mission to unlock the next mission.\n");
-            printf("      After finishing the first game, holding R+X+Left on the Ranger Net screen can unlock \"Enter the password\" option.\n\n");
-            printf("      Then enter the code followed to unlock the Manaphy mission:\n");
-            printf("      *US-en: P8M2-9D6F-43H7\n");
-            printf("      *EU-en: Mg35-Cpb8-4FW8\n");
-            printf("      *EU-fr: DY4g-k28S-QB9F\n");
-            printf("      *EU-de: R3d4-cv2S-WC7W\n");
-            printf("      *EU-sp: C58f-t3WT-Vn79\n");
-            printf("      *EU-it: FH38-fwD8-5S2a\n");
-            remove(newfilename);
+            //显示提示输入本工具的显示语言
+            printf(TextOfPRNMDTool[i][0]);
+        }
+        printf(":");
+        scanf("%d", &ToolLanguage);
+        getchar();
+        if(ToolLanguage > 0 && ToolLanguage <= TOOL_LANGUAGE_COUNTS)
+        {
+            ToolLanguage--;
+            printf("*------------------------------------------------*\n\n");
+            break;
         }
         else
-        {
-            printf("警告：存档语言应输入：[-jp] 或 [-oversea]\n");
-            printf("Warning: game language should input: [-jp] or [-oversea]\n");
-            remove(newfilename);
+        {        
+            for(int i = 0; i < TOOL_LANGUAGE_COUNTS;i++)
+            {
+                //显示参数错误
+                printf(TextOfPRNMDTool[i][1]);
+            }
+            printf("\n");
         }
     }
-    else if(!strcmp(GameVersion, "-r2"))
-    { 
-        if(!strcmp(GameLanguage, "-jp")||!strcmp(GameLanguage, "-oversea"))
+    int IfMakeInitialSave = 0;
+    int InitialSaveType = -1;
+    if(argc < 2)
+    {
+        while(1)
         {
-            char initGameMark[5] = {0x44,0x53,0x50,0x52,0x53}; //DSPRS
-            unsigned char BlockSet[6] = {0,1,2,3,4,5};
-            DistributeRanger23Mission(newfilename,initGameMark,5,0x1BDBE,0x3020,Ranger2Mission,BlockSet);
-            printf("Ranger2的6个任务配信完成。\n详见文件 \"%s\" 。\n\n", newfilename);
-            printf("6 missions of Ranger2 have been distributed.\nSee file \"%s\" .\n", newfilename);
-        }
-        else
-        {    
-            printf("警告：存档语言应输入：[-jp] 或 [-oversea]\n");
-            printf("Warning: game language should input: [-jp] or [-oversea]\n");
-            remove(newfilename);
+            printf("*------------------------------------------------*\n");
+            //显示使用方法
+            printf(TextOfPRNMDTool[ToolLanguage][2]);
+            //显示是否创建初始存档
+            printf(TextOfPRNMDTool[ToolLanguage][60]);
+            scanf("%d", &IfMakeInitialSave);
+            getchar();
+            if(IfMakeInitialSave == 1)
+            {
+                //显示初始存档类型
+                printf(TextOfPRNMDTool[ToolLanguage][61]);
+                scanf("%d", &InitialSaveType);
+                getchar();
+                while(1)
+                {
+                    if(InitialSaveType>=1 && InitialSaveType <=4)
+                    {
+                        InitialSaveType--;
+                        CreateInitialSave(ToolLanguage,InitialSaveType);
+                        //显示是否继续创建初始存档
+                        printf(TextOfPRNMDTool[ToolLanguage][68]);
+                        scanf("%d", &IfMakeInitialSave);
+                        getchar();
+                        printf("\n");
+                        if(IfMakeInitialSave == 1)
+                            break;
+                        else if(IfMakeInitialSave == 2)
+                        {
+                            //显示按回车退出
+                            printf(TextOfPRNMDTool[ToolLanguage][3]);
+                            getchar(); // 等待用户按下回车键
+                            return 1;
+                        }
+                        else
+                        {
+                            //显示参数错误
+                            printf(TextOfPRNMDTool[ToolLanguage][1]);
+                            printf("\n");
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        //显示参数错误
+                        printf(TextOfPRNMDTool[ToolLanguage][1]);
+                        printf("\n");
+                        break;
+                    }
+                }
+            }
+            else if(IfMakeInitialSave == 2)
+            {
+                //显示按回车退出
+                printf(TextOfPRNMDTool[ToolLanguage][3]);
+                getchar(); // 等待用户按下回车键
+                return 1;
+            }
+            else
+            {
+                //显示参数错误
+                printf(TextOfPRNMDTool[ToolLanguage][1]);
+                printf("\n");
+            }
         }
     }
-    else if(!strcmp(GameVersion, "-r3"))
+    //显示本次处理文本数量
+    printf(TextOfPRNMDTool[ToolLanguage][4],argc - 1);
+    unsigned int IsR1OverseaExisted = false;
+    for(int i = 1; i < argc; i++)
     {   
-        char initGameMark[6] = {0x44,0x53,0x52,0x41,0x53,0x41}; //DSRASA
-        unsigned char BlockSet[6] = {0,1,2,3,4,6};
-        if(!strcmp(GameLanguage, "-jp"))
+        //显示当前文本序号
+        printf(TextOfPRNMDTool[ToolLanguage][5],i);
+        //获取存档文件名，并创建 "Distributed_"+原名 的另存文件
+        const char *originfilename  = argv[i];
+        //显示原文件名
+        printf(TextOfPRNMDTool[ToolLanguage][6],originfilename);
+        char newfilename[65535];
+        memset(newfilename, 0, sizeof(newfilename));
+        const char *lastSlash = strrchr(originfilename, '\\');// 找到路径中最后一个反斜杠的位置
+        if (lastSlash != NULL) 
         {
-            DistributeRanger23Mission(newfilename,initGameMark,6,0x1A4BC,0x401C,Ranger3jpMission,BlockSet);
-            printf("Ranger3-jp的6个任务配信完成。\n详见文件 \"%s\" 。\n\n", newfilename);
-            printf("6 missions of Ranger3-jp have been distributed.\nSee file \"%s\" .\n", newfilename);
+            int position = lastSlash - originfilename;// 获取路径末尾的索引位置
+            strncpy(newfilename, originfilename, position + 1); // 复制路径内容到新文件名（包括最后的反斜杠）
+            strcat(newfilename, TextOfPRNMDTool[ToolLanguage][7]); // 在路径后面追加前缀
+            strcat(newfilename, lastSlash + 1);// 追加原始文件名（不包括反斜杠）
         }
-        else if(!strcmp(GameLanguage, "-oversea"))
+        else    // 如果未找到反斜杠，则直接在文件名前插入前缀
         {
-            DistributeRanger23Mission(newfilename,initGameMark,6,0x1A900,0x4100,Ranger3overseaMission,BlockSet);
-            printf("Ranger3-oversea的6个任务配信完成。\n详见文件 \"%s\" 。\n\n", newfilename);
-            printf("6 missions of Ranger3-oversea have been distributed.\nSee file \"%s\" .\n", newfilename);
+            strcpy(newfilename, TextOfPRNMDTool[ToolLanguage][7]);
+            strcat(newfilename, originfilename);
+        }
+        //拷贝原文件至另存文件
+        FILE *originalFile, *newFile;
+        originalFile = fopen(originfilename, "rb");
+        if (originalFile == NULL) 
+        {   
+            //显示无法打开文件
+            printf(TextOfPRNMDTool[ToolLanguage][8],originfilename);
+            //显示本文件处理结束
+            printf(TextOfPRNMDTool[ToolLanguage][9],i);
+            continue;
+        }
+        newFile = fopen(newfilename, "wb");
+        if (newFile == NULL) 
+        {
+            //显示无法另存文件
+            printf(TextOfPRNMDTool[ToolLanguage][10],originfilename);
+            //显示本文件处理结束
+            printf(TextOfPRNMDTool[ToolLanguage][9],i);
+            continue;
+        }
+        char buffer[1024];
+        size_t bytesRead;
+        while ((bytesRead = fread(buffer, 1, sizeof(buffer), originalFile)) > 0) 
+        {
+            fwrite(buffer, 1, bytesRead, newFile);
+        }
+        fclose(originalFile);
+        fclose(newFile);
+
+        //读取文件头，判断版本及语言
+        unsigned char gGameVersion = 0;
+        unsigned char gGameLanguage = 0;
+        char *gGameMark = (char *)malloc(8);
+        char *gGameMarkR1_2 = (char *)malloc(4);
+        unsigned int *OffsetOfSave = (unsigned int *)malloc(4);
+        char initGameMarkR1_1[0x8] = {0x50,0x4B,0x52,0x2D,0x30,0x35,0x39,0x00}; //PKR-059/0
+        char initGameMarkR1_2[0x4] = {0x61,0x30,0x30,0x00};                     //a00/0
+        char initGameMarkR2[0x8] = {0x44,0x53,0x50,0x52,0x53,0x00,0x00,0x00};   //DSPRS/0/0/0
+        char initGameMarkR3[0x8] = {0x44,0x53,0x52,0x41,0x53,0x41,0x00,0x00};   //DSRASA/0/0
+        newFile = fopen(newfilename, "rb");
+        fseek(newFile, 0, SEEK_SET);
+        fread(gGameMark, 1, 8, newFile);
+        fseek(newFile, 8, SEEK_SET);
+        fread(gGameMarkR1_2, 1, 4, newFile);
+        fseek(newFile, 8, SEEK_SET);
+        fread(OffsetOfSave, 1, 4, newFile);
+        fclose(newFile);
+        if(!strcmp(gGameMark,initGameMarkR1_1) && !strcmp(gGameMarkR1_2,initGameMarkR1_2))
+        {   
+            gGameVersion = GAME_VERSION_RANGER1;
+            CryptRanger1(newfilename,ToolLanguage);
+            unsigned char LanguageFlag = GetR1Flag(newfilename,0x1B,ToolLanguage);
+            if(LanguageFlag == 1)
+                gGameLanguage = GAME_LANGUAGE_JP;
+            else if(LanguageFlag >=2 && LanguageFlag <=6)
+                gGameLanguage = GAME_LANGUAGE_OVERSEA;
+            else
+            {
+                remove(newfilename);
+                //显示r1存档错误
+                printf(TextOfPRNMDTool[ToolLanguage][11]);
+                //显示本文件处理结束
+                printf(TextOfPRNMDTool[ToolLanguage][9],i);
+                continue;
+            }
+        }
+        else if(!strcmp(gGameMark,initGameMarkR2) && OffsetOfSave[0] == 0x1C)
+        {
+            gGameVersion = GAME_VERSION_RANGER2;
+            gGameLanguage = GAME_LANGUAGE_JP;       //2代任务地址日版海外版相同，选哪种语言均可
+            //gGameLanguage = GAME_LANGUAGE_OVERSEA;  //2代任务地址日版海外版相同，选哪种语言均可
+        }
+        else if(!strcmp(gGameMark,initGameMarkR3) && (OffsetOfSave[0] == 0x1C || OffsetOfSave[0] == 0x100))
+        {
+            gGameVersion = GAME_VERSION_RANGER3;
+            if(OffsetOfSave[0] == 0x1C)
+                gGameLanguage = GAME_LANGUAGE_JP;
+            else if(OffsetOfSave[0] == 0x100)
+                gGameLanguage = GAME_LANGUAGE_OVERSEA;
         }
         else
         {
-            printf("警告：存档语言应输入：[-jp] 或 [-oversea]\n");
-            printf("Warning: game language should input: [-jp] or [-oversea]\n");
             remove(newfilename);
+            //显示r123存档错误
+            printf(TextOfPRNMDTool[ToolLanguage][12]);
+            //显示本文件处理结束
+            printf(TextOfPRNMDTool[ToolLanguage][9],i);
+            continue;;
         }
+        if(gGameVersion != 2)
+        {
+            //显示存档游戏版本及语言
+            printf(TextOfPRNMDTool[ToolLanguage][13 + gGameLanguage],gGameVersion);
+        }
+        else
+        {
+           //显示存档游戏版本及语言
+            printf(TextOfPRNMDTool[ToolLanguage][13],gGameVersion);
+        }
+        
+        //根据版本及语言进行配信
+        unsigned int HadDistributedCounts = 0;
+        unsigned int HasResetManaphy = false;
+        if(gGameVersion == GAME_VERSION_RANGER1)
+        {
+            if(gGameLanguage == GAME_LANGUAGE_JP)
+            {   
+                HadDistributedCounts = DistributeRanger1jpMission(newfilename,ToolLanguage);
+                HasResetManaphy = ManaphyMissionReset(newfilename,ToolLanguage);
+                CryptRanger1(newfilename,ToolLanguage);
+            }
+            else if(gGameLanguage == GAME_LANGUAGE_OVERSEA)
+            {
+                IsR1OverseaExisted = true;
+                //显示巡护员1海外版任务说明
+                printf(TextOfPRNMDTool[ToolLanguage][35]);
+                HasResetManaphy = ManaphyMissionReset(newfilename,ToolLanguage);
+                CryptRanger1(newfilename,ToolLanguage);
+            }
+        }
+        else if(gGameVersion == GAME_VERSION_RANGER2)
+        { 
+            unsigned char BlockSet[6] = {0,1,2,3,4,5};
+            if(gGameLanguage == GAME_LANGUAGE_JP||gGameLanguage == GAME_LANGUAGE_OVERSEA)
+                HadDistributedCounts = DistributeRanger23Mission(newfilename,initGameMarkR2,0x1BDBE,0x3020,Ranger2Mission,BlockSet,ToolLanguage);
+        }
+        else if(gGameVersion == GAME_VERSION_RANGER3)
+        {   
+            unsigned char BlockSet[6] = {0,1,2,3,4,6};
+            if(gGameLanguage == GAME_LANGUAGE_JP)
+                HadDistributedCounts = DistributeRanger23Mission(newfilename,initGameMarkR3,0x1A4BC,0x401C,Ranger3jpMission,BlockSet,ToolLanguage);
+            else if(gGameLanguage == GAME_LANGUAGE_OVERSEA)
+                HadDistributedCounts = DistributeRanger23Mission(newfilename,initGameMarkR3,0x1A900,0x4100,Ranger3overseaMission,BlockSet,ToolLanguage);
+        }
+        //确认是否需要进行配信另存新文件
+        if((gGameVersion == GAME_VERSION_RANGER1 && gGameLanguage == GAME_LANGUAGE_JP && HadDistributedCounts == 4 && HasResetManaphy == false)||
+           (gGameVersion == GAME_VERSION_RANGER1 && gGameLanguage == GAME_LANGUAGE_OVERSEA && HasResetManaphy == false)||
+           (gGameVersion == GAME_VERSION_RANGER2 && HadDistributedCounts == 6)||
+           (gGameVersion == GAME_VERSION_RANGER3 && HadDistributedCounts == 6))
+        {
+            remove(newfilename);
+            //显示文件无需配信
+            printf(TextOfPRNMDTool[ToolLanguage][22]);
+        }
+        else
+            //显示另存文件名
+            printf(TextOfPRNMDTool[ToolLanguage][23],newfilename);
+        //显示本文件处理结束
+        printf(TextOfPRNMDTool[ToolLanguage][9],i);
     }
-    else
+    //显示所有文件处理完成
+    printf(TextOfPRNMDTool[ToolLanguage][24], argc - 1);
+    if(IsR1OverseaExisted == true)
     {
-        printf("警告：存档版本应输入：[-r1], [-r2], 或 [-r3]\n");
-        printf("Warning: game version should be: [-r1], [-r2] or [-r3]\n");
-        remove(newfilename);
+        //显示存在1代海外版，见上文说明
+        printf(TextOfPRNMDTool[ToolLanguage][25]);
     }
-
-    //printf("\n\n按下回车键退出程序...\n");
-    //printf("Press Enter to exit...\n");
-    //getchar(); // 等待用户按下回车键
+    //显示退出程序
+    printf(TextOfPRNMDTool[ToolLanguage][3]);
+    getchar(); // 等待用户按下回车键
     return 0;
 }
 
 // 插入数据到文件的函数
-void insertData(const char *filename, const unsigned char *data, size_t dataSize, long position) 
+void insertData(const char *filename, const unsigned char *data, size_t dataSize, long position, int ToolLanguage) 
 {
     FILE *file = fopen(filename, "rb+");
     if (file == NULL) 
     {
-        printf("无法打开文件\n");
-        printf("Can not open file.\n\n");
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
         return;
     }
     // 移动文件指针到特定位置
@@ -177,49 +353,56 @@ void insertData(const char *filename, const unsigned char *data, size_t dataSize
     fclose(file);
 }
 
-unsigned char IsStringExisted(const char *filename,char initGameMark[],unsigned char LengthOfGameMark,unsigned int SearchOffset)
+unsigned char GetR1Flag(const char *filename, unsigned int FlagType,int ToolLanguage)
 {
-    FILE *file = fopen(filename, "rb");    
-    if (file == NULL) 
+    FILE *sav = fopen(filename, "rb");
+    if (sav == NULL) 
     {
-        printf("无法打开文件\n");
-        printf("Can not open file.\n\n");
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
         return 0;
     }
-
-    //初始默认不存在
-    unsigned char gIsStringExisted = false;
-    char *gGameMark = (char *)malloc(LengthOfGameMark+1);// 分配内存，并保留一个额外字节用于字符串结束符
-    if (gGameMark == NULL) 
+    unsigned int *dataSize = (unsigned int *)malloc(4);
+    unsigned int *siskintsdChunkOffset = (unsigned int *)malloc(4);
+    unsigned char *Flag = (unsigned char *)malloc(1);
+    unsigned char *tmp = (unsigned char *)malloc(1);
+    for(int i = 0; i < 10; i++)
     {
-        printf("内存分配失败\n");
-        printf("Memory allocation failed\n\n");
-        fclose(file);
-        return 0; // 返回一个状态码，表示内存分配失败
-    }
-
-    fseek(file, SearchOffset, SEEK_SET);
-    size_t bytesRead = fread(gGameMark, 1, LengthOfGameMark, file);
-    gGameMark[LengthOfGameMark] = '\0'; // 添加字符串结束符
-
-    if (bytesRead == LengthOfGameMark) 
-    {
-        for(int i = 0;i < LengthOfGameMark;i++)
+        fseek(sav,0x44 + i * 0x30,SEEK_SET);
+        fread(dataSize, 1, 4, sav);
+        if(dataSize[0] == 0x260C)
         {
-            if(gGameMark[i] != initGameMark[i])
-            {    
-                fclose(file);
-                free(gGameMark);
-                return gIsStringExisted;
-            }
+            fseek(sav,0x40 + i * 0x30,SEEK_SET);
+            fread(siskintsdChunkOffset, 1, 4, sav);
+            break;
         }
-        gIsStringExisted = true;
     }
-
-    fclose(file);
-    free(gGameMark);
-
-    return gIsStringExisted;
+    fseek(sav,siskintsdChunkOffset[0] + 0x10,SEEK_SET);
+    fread(Flag, 1, 1, sav);
+    fseek(sav,siskintsdChunkOffset[0] + 0x2710,SEEK_SET);
+    fread(tmp, 1, 1, sav);
+    if(tmp[0]>Flag[0] && tmp[0]!=0xFF && Flag[0] !=0xFF)
+    {
+        fseek(sav,siskintsdChunkOffset[0] + FlagType + 0x2700,SEEK_SET);
+        fread(Flag, 1, 1, sav);
+    }
+    else if(tmp[0]<=Flag[0] && tmp[0]!=0xFF && Flag[0] !=0xFF)
+    {
+        fseek(sav,siskintsdChunkOffset[0] + FlagType,SEEK_SET);
+        fread(Flag, 1, 1, sav);
+    }
+    else if(tmp[0] == 0xFF)
+    {
+        fseek(sav,siskintsdChunkOffset[0] + FlagType,SEEK_SET);
+        fread(Flag, 1, 1, sav);
+    }
+    else if(Flag[0] == 0xFF)
+    {    
+        fseek(sav,siskintsdChunkOffset[0] + FlagType + 0x2700,SEEK_SET);
+        fread(Flag, 1, 1, sav);
+    }
+    fclose(sav);
+    return Flag[0];
 }
 
 int crc16_table[] =
@@ -269,9 +452,9 @@ unsigned int CRC16(char *data, int size)
     return chk;
 }
 
-void RangerCrypt(unsigned int *data, int size)
+void ChunkCrypt(unsigned int *data, int size)
 {
-    int i;                 // r5
+    int i;                          // r5
     unsigned int rand;              // ST04_4
     unsigned int h_rand;            // r0
     unsigned int s_rand = data[0];  // the initial seed is located before the encrypted data
@@ -285,23 +468,13 @@ void RangerCrypt(unsigned int *data, int size)
     }
 }
 
-void CryptRanger1jp(const char *filename)
+void CryptRanger1(const char *filename,int ToolLanguage)
 {
     FILE *sav = fopen(filename, "rb+");
-    if (sav == NULL) {
-        printf("无法打开文件 \"%s\" 。\n请尝试缩减文件名的字数，并移除文件名中的空格。\n\n", filename);
-        printf("Can not open file \"%s\" .\nPlease try shortening the file name and removing spaces from the name.\n\n\n", filename);
-        return;
-    }
-
-    //检查存档标识符是否是巡护员1的PKR-059 a00
-    char gIsSaveExisted = true;
-    char initGameMark[0xC] = {0x50,0x4B,0x52,0x2D,0x30,0x35,0x39,0x00,0x61,0x30,0x30,0x00}; //PKR-059 a00 
-    gIsSaveExisted = IsStringExisted(filename,initGameMark,0xC,0);
-    if(!gIsSaveExisted)
+    if (sav == NULL) 
     {
-        printf("此文件不是宝可梦巡护员1代日版的存档，请检查。\n");
-        printf("This file is not from pokemon ranger1 jp, please check.\n");
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
         return;
     }
 
@@ -319,7 +492,7 @@ void CryptRanger1jp(const char *filename)
     fseek(sav, 0xC, SEEK_SET);
     fread(DecryptedHeader, 1, (R1JP_SAVE_HEADER_SIZE-0xC), sav);
     if(IsEncrypted)
-        RangerCrypt(DecryptedHeader, (R1JP_SAVE_HEADER_SIZE-0xC));
+        ChunkCrypt(DecryptedHeader, (R1JP_SAVE_HEADER_SIZE-0xC));
     
     //加解密文件头的两个块
     //开头的两个文件头，理论上应该是完全一致的镜像备份
@@ -330,7 +503,7 @@ void CryptRanger1jp(const char *filename)
         fread(R1JPSaveheader, 1, (R1JP_SAVE_HEADER_SIZE-0xC), sav);
         if(!IsEncrypted)//解密状态下重算crc16
             R1JPSaveheader[1] = CRC16((char*)R1JPSaveheader+0x8, (R1JP_SAVE_HEADER_SIZE-0xC-0x8));
-        RangerCrypt(R1JPSaveheader, (R1JP_SAVE_HEADER_SIZE-0xC));
+        ChunkCrypt(R1JPSaveheader, (R1JP_SAVE_HEADER_SIZE-0xC));
         fseek(sav, 0xC + (R1JP_SAVE_HEADER_SIZE*i), SEEK_SET);
         fwrite(R1JPSaveheader, 1, (R1JP_SAVE_HEADER_SIZE-0xC), sav);
         free(R1JPSaveheader);
@@ -366,7 +539,7 @@ void CryptRanger1jp(const char *filename)
                 fread(subchunk, 1, subChunkSize, sav);
                 if(!IsEncrypted && ((subchunk[1] & 0xFFFF) != 0))//解密状态下重算crc16，且原crc不为0（中断存档使用结束后crc16为0）
                     subchunk[1] = CRC16((char*)subchunk+0x18, dataSize);
-                RangerCrypt(subchunk, (dataSize+0x18));
+                ChunkCrypt(subchunk, (dataSize+0x18));
                 fseek(sav, chunkOffset + (subChunkSize*j), SEEK_SET);
                 fwrite(subchunk, 1, (dataSize+0x18), sav);
                 free(subchunk);
@@ -374,19 +547,20 @@ void CryptRanger1jp(const char *filename)
         }
         //unsigned int nowOffset = ftell(sav);
         //printf("当前地址为：%08x 字节\n", nowOffset);
-    }
+    } 
     free(DecryptedHeader);
 	fclose(sav);
     return;
 }
 
-void DistributeRanger1jpMission(const char *filename)
+unsigned int DistributeRanger1jpMission(const char *filename,int ToolLanguage)
 {
     FILE *sav = fopen(filename, "rb+");
-    if (sav == NULL) {
-        printf("无法打开文件 \"%s\" 。\n请尝试缩减文件名的字数，并移除文件名中的空格。\n\n", filename);
-        printf("Can not open file \"%s\" .\nPlease try shortening the file name and removing spaces from the name.\n\n\n", filename);
-        return;
+    if (sav == NULL) 
+    {
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
+        return 0;
     }
     //获取解密的存档头数据（不含存档标识符），用于后续块调用数据
     unsigned int *DecryptedHeader = (unsigned int *)malloc((R1JP_SAVE_HEADER_SIZE-0xC));
@@ -395,15 +569,7 @@ void DistributeRanger1jpMission(const char *filename)
     fclose(sav);
     //计算现有块数，以及是否存在已配信块
     int existedChunk = 0;
-    enum {
-        SISKIN,
-        WREN,
-        HAZEL,
-        D001,
-        D002,
-        D003,
-        D004
-    };
+    unsigned int HadDistributedCounts = 0;
     char chunkOrder[7]=
     {
         [SISKIN] = 10,//siskin.tsd              datasize:0x260C chunksize:0x4E00
@@ -448,17 +614,19 @@ void DistributeRanger1jpMission(const char *filename)
             unsigned int NowChunkOffset = previousChunkOffset + previousChunkSize;
 
             //写入saveheader
-            insertData(filename, SaveHeaderOfD00[i], 0x30, 0x20 + (existedChunk*0x30));
-            insertData(filename, SaveHeaderOfD00[i], 0x30, 0x20 + (existedChunk*0x30) + 0x200);
+            insertData(filename, SaveHeaderOfD00[i], 0x30, 0x20 + (existedChunk*0x30),ToolLanguage);
+            insertData(filename, SaveHeaderOfD00[i], 0x30, 0x20 + (existedChunk*0x30) + 0x200,ToolLanguage);
             //写入siskin.tsd的新brief
-            insertData(filename, BriefOfD00[i], 0x56C, siskintsdChunkOffset + 0x30 + i*0x56C);
-            insertData(filename, BriefOfD00[i], 0x56C, siskintsdChunkOffset + 0x30 + i*0x56C + 0x2700);
+            insertData(filename, BriefOfD00[i], 0x56C, siskintsdChunkOffset + 0x30 + i*0x56C,ToolLanguage);
+            insertData(filename, BriefOfD00[i], 0x56C, siskintsdChunkOffset + 0x30 + i*0x56C + 0x2700,ToolLanguage);
             //写入新chunk
-            insertData(filename, DataOfD00[i], ChunkSizeOfD00[i], NowChunkOffset);
+            insertData(filename, DataOfD00[i], ChunkSizeOfD00[i], NowChunkOffset,ToolLanguage);
 
             //更新saveheader的chunk偏移地址
             FILE *sav = fopen(filename, "rb+");
             fseek(sav, (0x40 + (existedChunk*0x30)), SEEK_SET);
+            fwrite(&NowChunkOffset, 1, 4, sav);
+            fseek(sav, (0x240 + (existedChunk*0x30)), SEEK_SET);
             fwrite(&NowChunkOffset, 1, 4, sav);
             //更新siskin.tsd的new mission flag
             fseek(sav,siskintsdChunkOffset + 0x22,SEEK_SET);
@@ -466,9 +634,12 @@ void DistributeRanger1jpMission(const char *filename)
             MissionNewFlag = MissionNewFlag | (1<<i);
             fseek(sav,siskintsdChunkOffset + 0x22,SEEK_SET);
             fwrite(&MissionNewFlag, 1, 1, sav);
-            unsigned int unknown = 0x01010101;
-            fseek(sav,siskintsdChunkOffset + 0x18,SEEK_SET);
-            fwrite(&unknown, 4, 1, sav);
+            //siskin.tsd2
+            fseek(sav,siskintsdChunkOffset + 0x2722,SEEK_SET);
+            MissionNewFlag = fgetc(sav);
+            MissionNewFlag = MissionNewFlag | (1<<i);
+            fseek(sav,siskintsdChunkOffset + 0x2722,SEEK_SET);
+            fwrite(&MissionNewFlag, 1, 1, sav);
 
             //更新DecryptedHeader
             fseek(sav, 0xC, SEEK_SET);
@@ -477,21 +648,423 @@ void DistributeRanger1jpMission(const char *filename)
 
             chunkOrder[i+3] = existedChunk;
             existedChunk++;
+            //显示任务配信完成
+            printf(TextOfPRNMDTool[ToolLanguage][27+i]);
+        }
+        else
+        {
+            HadDistributedCounts++;
+            //显示任务已接收无需配信
+            printf(TextOfPRNMDTool[ToolLanguage][31+i]);
         }
     }
     free(DecryptedHeader);
-    return;
+    return HadDistributedCounts;
 }
 
-void DistributeRanger23Mission(const char *filename,char initGameMark[],unsigned char LengthOfGameMark,unsigned int BaseOffset,unsigned int BlockSize,const unsigned char *const Mission[],unsigned char BlockSet[])
-{
-    char gIsMissionExisted = false;
+unsigned int DistributeRanger23Mission(const char *filename,char initGameMark[],unsigned int BaseOffset,unsigned int BlockSize,const unsigned char *const Mission[],unsigned char BlockSet[],int ToolLanguage)
+{    FILE *file = fopen(filename, "rb");    
+    if (file == NULL) 
+    {
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
+        return 0;
+    }
+    //初始默认不存在
+    char *gGameMark = (char *)malloc(8);
+    unsigned int HadDistributedCounts = 0;
     for(int i = 0; i < 6; i++)
     {   //检查是否已经存在配信
-        gIsMissionExisted = IsStringExisted(filename,initGameMark,LengthOfGameMark,(BaseOffset + BlockSize * BlockSet[i]));
-        //注入还未接收的配信
-        if(!gIsMissionExisted)
-            insertData(filename, Mission[i], BlockSize, (BaseOffset + BlockSize * BlockSet[i]));
+        memset(gGameMark, 0, 8);
+        fseek(file, (BaseOffset + BlockSize * BlockSet[i]), SEEK_SET);
+        fread(gGameMark, 1, 8, file);
+        int TextNumber = (strlen(initGameMark)-5)*12;
+        if(!strcmp(gGameMark,initGameMark))
+        {
+            //显示任务已接收无需配信
+            printf(TextOfPRNMDTool[ToolLanguage][42+TextNumber+i]);
+            HadDistributedCounts++;
+        }
+        else
+        {
+            //显示任务配信完成
+            insertData(filename, Mission[i], BlockSize, (BaseOffset + BlockSize * BlockSet[i]),ToolLanguage);
+            printf(TextOfPRNMDTool[ToolLanguage][36+TextNumber+i]);
+        }
     }
-    return;
+    free(gGameMark);
+    fclose(file);
+    return HadDistributedCounts;
+}
+
+void CreateInitialSave(int ToolLanguage,int InitialSaveType)
+{
+    #define RANGER1_JP      0
+    #define RANGER2         1
+    #define RANGER3_JP      2
+    #define RANGER3_OVERSEA 3
+    const char *Initialfilename  = TextOfPRNMDTool[ToolLanguage][62+InitialSaveType];
+    FILE *file = fopen(Initialfilename, "wb");
+    if (file == NULL) 
+    {
+        //显示无法创建文件
+        printf(TextOfPRNMDTool[ToolLanguage][66]);
+        return;
+    }
+    //填充0xFF
+    char *buffer;
+    buffer = (char *)malloc(0x40000);
+    for (int i = 0; i < 0x40000; i++) 
+        buffer[i] = 0xFF;
+    fseek(file, 0, SEEK_SET);
+    fwrite(buffer, 1, 0x40000, file);
+    free(buffer);
+    fclose(file);
+
+    //确定版本及语言
+    unsigned char gGameVersion = 0;
+    unsigned char gGameLanguage = 0;
+    switch(InitialSaveType)
+    {
+        case RANGER1_JP:
+            gGameVersion = GAME_VERSION_RANGER1;
+            break;
+        case RANGER2:
+            gGameVersion = GAME_VERSION_RANGER2;
+            break;
+        case RANGER3_JP:
+            gGameVersion = GAME_VERSION_RANGER3;
+            gGameLanguage = GAME_LANGUAGE_JP;
+            break;
+        case RANGER3_OVERSEA:
+            gGameVersion = GAME_VERSION_RANGER3;
+            gGameLanguage = GAME_LANGUAGE_OVERSEA;
+            break;
+    }
+    //根据版本及语言进行配信
+    char initGameMarkR2[0x8] = {0x44,0x53,0x50,0x52,0x53,0x00,0x00,0x00};   //DSPRS/0/0/0
+    char initGameMarkR3[0x8] = {0x44,0x53,0x52,0x41,0x53,0x41,0x00,0x00};   //DSRASA/0/0
+    if(gGameVersion == GAME_VERSION_RANGER1)
+    {
+        file = fopen(Initialfilename, "rb+");
+        buffer = (char *)malloc(0x260C);
+        for (int i = 0; i < 0x260C; i++) 
+            buffer[i] = 0x00;
+        fseek(file, 0, SEEK_SET);
+        //00填充header的2个块
+        fwrite(buffer, 1, 0x400, file);
+        //00填充siskintsd的第2个块
+        fseek(file, 0x2B00, SEEK_SET);
+        fwrite(buffer, 1, 0x260C, file);
+        free(buffer);
+        fclose(file);
+        //填充预设saveheader
+        insertData(Initialfilename, InititalSaveTemplate[0], 0xB0, 0,ToolLanguage);
+        insertData(Initialfilename, InititalSaveTemplate[0], 0xB0, 0x200,ToolLanguage);
+        //填充预设siskintsd
+        insertData(Initialfilename, InititalSaveTemplate[1], 0x8, 0x400,ToolLanguage);
+        insertData(Initialfilename, InititalSaveTemplate[2], 0x30, 0x2B00,ToolLanguage);
+        file = fopen(Initialfilename, "rb+");
+        fseek(file, 0x2B28, SEEK_SET);
+        unsigned int playerId = RNG();
+        fwrite(&playerId, 1, 4, file);
+        fclose(file);
+        //填充预设wrentsd
+        insertData(Initialfilename, InititalSaveTemplate[3], 0x3100, 0x5200,ToolLanguage);
+        insertData(Initialfilename, InititalSaveTemplate[4], 0x3100, 0x8300,ToolLanguage);
+        //填充预设hazeltsd
+        insertData(Initialfilename, InititalSaveTemplate[5], 0x8, 0xB400,ToolLanguage);
+        insertData(Initialfilename, InititalSaveTemplate[6], 0x3100, 0xE500,ToolLanguage);
+        DistributeRanger1jpMission(Initialfilename,ToolLanguage); 
+        CryptRanger1(Initialfilename,ToolLanguage);
+    }
+    else if(gGameVersion == GAME_VERSION_RANGER2)
+    { 
+        unsigned char BlockSet[6] = {0,1,2,3,4,5};
+        DistributeRanger23Mission(Initialfilename,initGameMarkR2,0x1BDBE,0x3020,Ranger2Mission,BlockSet,ToolLanguage);
+    }
+    else if(gGameVersion == GAME_VERSION_RANGER3)
+    {   
+        unsigned char BlockSet[6] = {0,1,2,3,4,6};
+        if(gGameLanguage == GAME_LANGUAGE_JP)
+            DistributeRanger23Mission(Initialfilename,initGameMarkR3,0x1A4BC,0x401C,Ranger3jpMission,BlockSet,ToolLanguage);
+        else if(gGameLanguage == GAME_LANGUAGE_OVERSEA)
+            DistributeRanger23Mission(Initialfilename,initGameMarkR3,0x1A900,0x4100,Ranger3overseaMission,BlockSet,ToolLanguage);
+    }
+    //显示初始存档已创建
+    printf(TextOfPRNMDTool[ToolLanguage][67],Initialfilename);
+}
+
+unsigned int RNG() 
+{
+    //这仅是本工具为了将初始日版存档内的玩家id随机化所做的措施，并非是游戏中的加密方式。
+    srand((unsigned int)time(NULL));  // 使用当前时间作为随机数种子
+    unsigned int random = 0;
+    for (int i = 0; i < 4; i++) 
+        random = (random << 8) | (rand() & 0xFF);
+    return random;
+}
+
+unsigned int GenerateR1Seed() 
+{
+    //NDS系统
+    #define REG_TM0D 0x04000100
+    #define REG_TM0CNT 0x04000102
+    //对于游戏中的seed计算，则是：
+    //the seeds for the encryption is created by via timer 0 (REG_TM0D) + a counter of its overflow (REG_TM0CNT = TIMER_ON | TM_IRQ | TM_FREQ_64).
+    //(REG_TM0D | (TM_IRQ_count << 16)) + 1
+    //来自@ajxpk的研究
+
+    // 从 timer 0 获取初始 seed
+    uint16_t tm0d = *(volatile uint16_t*)REG_TM0D; // 从寄存器读取 timer 0 的值
+    uint16_t tm0cnt = *(volatile uint16_t*)REG_TM0CNT; // 从寄存器读取 timer 0 控制寄存器的值
+    uint32_t tm0Seed = (uint32_t)tm0d | ((uint32_t)tm0cnt << 16); // 组合 timer 0 的值和控制寄存器的值
+
+    // 对 seed 进行处理（+1，或者进行其他操作）
+    uint32_t seed = tm0Seed + 1; // 对 seed 进行处理，例如加1
+
+    return seed;
+}
+
+unsigned int GenerateR1Time(const char *filename,int ToolLanguage)
+{
+    #define MINUTE_OFFSET 16
+    #define SECOND_OFFSET 6
+    #define HOUR_OFFSET   0
+    FILE *file = fopen(filename, "rb");    
+    if (file == NULL) 
+    {
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
+        return 0;
+    }
+    // 获取当前系统时间
+    time_t currentTime;
+    struct tm *localTime;
+    time(&currentTime);
+    localTime = localtime(&currentTime);
+    // 提取年月日时分秒信息
+    int hour = localTime->tm_hour;
+    int minute = localTime->tm_min;
+    int second = localTime->tm_sec;
+
+    unsigned int time = 0xFFFFFFFF; // 默认值。后续更新从saveheader和chunkheader获取
+    time &= 0xFFE0FFFF;
+    time |= ((hour & 0x1F) << HOUR_OFFSET);
+    time &= 0xFFFFFFC0;
+    time |= (minute & 0x3F);
+    time &= 0xFFFFF03F;
+    time |= ((second & 0x3F) << SECOND_OFFSET);
+
+    return time;
+}
+unsigned short GenerateR1Date(const char *filename,int ToolLanguage)
+{
+    #define YEAR_OFFSET  7
+    #define MONTH_OFFSET 4
+    #define DAY_OFFSET   0
+    FILE *file = fopen(filename, "rb");    
+    if (file == NULL) 
+    {
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
+        return 0;
+    }
+    // 获取当前系统时间
+    time_t currentTime;
+    struct tm *localTime;
+    time(&currentTime);
+    localTime = localtime(&currentTime);
+    // 提取年月日时分秒信息
+    int year = localTime->tm_year + 1900; // 年份需加上 1900
+    int month = localTime->tm_mon + 1;    // 月份从 0 开始
+    int day = localTime->tm_mday;
+
+    unsigned short date = 0xFFFF; // 默认值。后续更新从saveheader和chunkheader获取
+    date &= 0xFF80;
+    date |= (year & 0x7F);
+    date &= 0xF87F;
+    date |= ((month & 0xF) << MONTH_OFFSET);
+    date &= 0x7FF;
+    date |= ((day & 0x1F) << DAY_OFFSET);
+
+    return date;
+}
+
+unsigned int ManaphyMissionReset(const char *filename,int ToolLanguage)
+{
+    #define MANAPHY_STATUS_MISSION_NOT_GET      0
+    #define MANAPHY_STATUS_EGG_NOT_RECEIVED     1
+    #define MANAPHY_STATUS_EGG_RECEIVED         2
+    #define MANAPHY_STATUS_EGG_SENT             3
+
+    #define RESET_NOTHING                       0
+    #define RESET_TO_EGG_NOT_RECEIVED           1
+    #define RESET_TO_EGG_RECEIVED               2
+
+    FILE *file = fopen(filename, "rb+");    
+    if (file == NULL) 
+    {
+        //显示无法打开文件
+        printf(TextOfPRNMDTool[ToolLanguage][26]);
+        return 0;
+    }
+    fclose(file);
+    unsigned int HasResetManaphy = false;
+    unsigned int ManaphyStatus = MANAPHY_STATUS_MISSION_NOT_GET;
+    unsigned int ResetStatus = RESET_NOTHING;
+    //获取相关flag
+    unsigned char LanguageFlag = GetR1Flag(filename,0x1B,ToolLanguage);
+    unsigned char ManaphyFlag = GetR1Flag(filename,0x20,ToolLanguage);
+    unsigned int dateOfObtainManaphyEgg = 0;
+    for(int i = 0;i < 4;i++)
+    {
+        unsigned char tmp = GetR1Flag(filename,0x24 + i,ToolLanguage);
+        dateOfObtainManaphyEgg = dateOfObtainManaphyEgg | (tmp << (8*i));
+    }
+    //根据flag确定当前status
+    if(LanguageFlag == 1)//日版，日版此时至少已经完成配信，处于status 1-3
+    {
+        if(ManaphyFlag == 0 && dateOfObtainManaphyEgg == 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_NOT_RECEIVED;
+        else if(ManaphyFlag == 1 && dateOfObtainManaphyEgg != 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_RECEIVED;
+        else if(ManaphyFlag == 2 && dateOfObtainManaphyEgg != 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_SENT;
+    }
+    else if(LanguageFlag >= 2 && LanguageFlag <= 6)//海外版，海外版status 0-4均有可能
+    {
+        if(ManaphyFlag == 0 && dateOfObtainManaphyEgg == 0)
+            ManaphyStatus = MANAPHY_STATUS_MISSION_NOT_GET;
+        else if(ManaphyFlag == 3 && dateOfObtainManaphyEgg == 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_NOT_RECEIVED;
+        else if(ManaphyFlag == 1 && dateOfObtainManaphyEgg != 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_RECEIVED;
+        else if(ManaphyFlag == 2 && dateOfObtainManaphyEgg != 0)
+            ManaphyStatus = MANAPHY_STATUS_EGG_SENT;
+    }
+    //处理status2、3的情况，获取选择哪种重置
+    if(ManaphyStatus == MANAPHY_STATUS_EGG_RECEIVED)
+    {
+        while(1)
+        {
+            //显示已接收蛋的重置选项
+            printf(TextOfPRNMDTool[ToolLanguage][69]);
+            scanf("%d", &ResetStatus);
+            getchar();
+            if(ResetStatus == 1)
+            {
+                ResetStatus = RESET_TO_EGG_NOT_RECEIVED;
+                break;
+            }
+            else if(ResetStatus == 2)
+            {
+                ResetStatus = RESET_NOTHING;
+                break;
+            }
+            else
+            {
+                //显示参数错误
+                printf(TextOfPRNMDTool[ToolLanguage][1]);
+                printf("\n");
+            }
+        }
+    }
+    else if( ManaphyStatus == MANAPHY_STATUS_EGG_SENT)
+    {
+        while(1)
+        {
+            //显示已传送蛋的重置选项
+            printf(TextOfPRNMDTool[ToolLanguage][70]);
+            scanf("%d", &ResetStatus);
+            getchar();
+            if(ResetStatus == 1)
+            {
+                ResetStatus = RESET_TO_EGG_NOT_RECEIVED;
+                break;
+            }
+            else if(ResetStatus == 2)
+            {
+                ResetStatus = RESET_TO_EGG_RECEIVED;
+                break;
+            }
+            else if(ResetStatus == 3)
+            {
+                ResetStatus = RESET_NOTHING;
+                break;
+            }
+            else
+            {
+                //显示参数错误
+                printf(TextOfPRNMDTool[ToolLanguage][1]);
+                printf("\n");
+            }
+        }
+    }
+    //根据重置选项进行重置
+    file = fopen(filename, "rb+");
+    unsigned int *dataSize = (unsigned int *)malloc(4);
+    unsigned int *siskintsdChunkOffset = (unsigned int *)malloc(4);
+    for(int i = 0; i < 10; i++)
+    {
+        fseek(file,0x44 + i * 0x30,SEEK_SET);
+        fread(dataSize, 1, 4, file);
+        if(dataSize[0] == 0x260C)
+        {
+            fseek(file,0x40 + i * 0x30,SEEK_SET);
+            fread(siskintsdChunkOffset, 1, 4, file);
+            break;
+        }
+    }
+    if(ResetStatus == RESET_TO_EGG_NOT_RECEIVED)
+    {
+        if(LanguageFlag == 1)
+            ManaphyFlag = 0;
+        else
+            ManaphyFlag = 3;
+        dateOfObtainManaphyEgg = 0;
+        unsigned char MissionNewFlag;
+        //重置newflag
+        fseek(file,siskintsdChunkOffset[0] + 0x22,SEEK_SET);
+        MissionNewFlag = fgetc(file);
+        MissionNewFlag = MissionNewFlag | 1;
+        fseek(file,siskintsdChunkOffset[0] + 0x22,SEEK_SET);
+        fwrite(&MissionNewFlag, 1, 1, file);
+        fseek(file,siskintsdChunkOffset[0] + 0x2722,SEEK_SET);
+        MissionNewFlag = fgetc(file);
+        MissionNewFlag = MissionNewFlag | 1;
+        fseek(file,siskintsdChunkOffset[0] + 0x2722,SEEK_SET);
+        fwrite(&MissionNewFlag, 1, 1, file);
+        //重置玛娜霏flag
+        fseek(file,siskintsdChunkOffset[0] + 0x20,SEEK_SET);
+        fwrite(&ManaphyFlag,1,1,file);
+        fseek(file,siskintsdChunkOffset[0] + 0x2720,SEEK_SET);
+        fwrite(&ManaphyFlag,1,1,file);
+        //重置获得蛋日期
+        fseek(file,siskintsdChunkOffset[0] + 0x24,SEEK_SET);
+        fwrite(&dateOfObtainManaphyEgg,1,4,file);
+        fseek(file,siskintsdChunkOffset[0] + 0x2724,SEEK_SET); 
+        fwrite(&dateOfObtainManaphyEgg,1,4,file);
+        //显示已重置为未接收蛋
+        printf(TextOfPRNMDTool[ToolLanguage][71]);
+        //显示任务需通关提示
+        printf(TextOfPRNMDTool[ToolLanguage][73]);
+        HasResetManaphy = true;
+    }
+    else if(ResetStatus == RESET_TO_EGG_RECEIVED)
+    {
+        ManaphyFlag = 1;
+        //重置玛娜霏flag
+        fseek(file,siskintsdChunkOffset[0] + 0x20,SEEK_SET);
+        fwrite(&ManaphyFlag,1,1,file);
+        fseek(file,siskintsdChunkOffset[0] + 0x2720,SEEK_SET);
+        fwrite(&ManaphyFlag,1,1,file);
+        //显示已重置为未传送蛋
+        printf(TextOfPRNMDTool[ToolLanguage][72]);
+        //显示任务需通关提示
+        printf(TextOfPRNMDTool[ToolLanguage][73]);
+        HasResetManaphy = true;
+    }
+    fclose(file);
+    return HasResetManaphy;
 }

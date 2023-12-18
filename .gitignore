@@ -1,3 +1,5 @@
 *.sav
 *.exe
 .vscode
+*.nds
+*.mch
