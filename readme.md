@@ -1,6 +1,7 @@
 ## 宝可梦巡护员网络任务配信器
 Pokemon Ranger Net Mission Distribution Tool (PRNMDTool)<br>
-卧看微尘制作（made by wokann）
+卧看微尘制作（made by wokann）<br>
+本工具目前提供中文、英文双语界面（支持新增多语种显示，详见i18n.h）
 
 ## 功能
 1. 为已有进度的巡护员1日版、巡护员2（日版及海外版）、巡护员3（日版及海外版）配信巡护员网络任务。
