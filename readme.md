@@ -1,6 +1,7 @@
 ## 宝可梦巡护员网络任务配信器
 Pokemon Ranger Net Mission Distribution Tool (PRNMDTool)<br>
 卧看微尘制作（made by wokann）<br>
+源代码地址：https://github.com/Wokann/PokemonRangerNetMissionDistributionTool <br>
 本工具目前提供中文、英文双语界面（支持新增多语种显示，详见i18n.h）
 
 ## 功能

@@ -1,6 +1,7 @@
 ## 宝可梦巡护员网络任务配信器
 Pokemon Ranger Net Mission Distribution Tool (PRNMDTool)<br>
 卧看微尘制作（made by wokann）<br>
+Source code：https://github.com/Wokann/PokemonRangerNetMissionDistributionTool <br>
 This tool currently has two language interfaces(Chinese, English) (it also supports additional multi-language display, see i18n.h for details)
 
 ## Feature
