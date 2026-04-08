@@ -1,6 +1,7 @@
 #define TOOL_LANGUAGE_CHINESE_SIMPLIFIED    0
 #define TOOL_LANGUAGE_ENGLISH               1
-#define TOOL_LANGUAGE_COUNTS                2
+#define TOOL_LANGUAGE_FRENCH                2
+#define TOOL_LANGUAGE_COUNTS                3
 
 #define TOOL_TEXTS_COUNTS                   74
 
@@ -97,7 +98,7 @@ const char *TextOfPRNMDTool[TOOL_LANGUAGE_COUNTS][TOOL_TEXTS_COUNTS] =
 
     [TOOL_LANGUAGE_ENGLISH]=
     {
-        [0]="Please select the display language of this tool, enter the serial number and press Enter to confirm. [1. Chinese 2. English]\n",
+        [0]="Please select the display language of this tool, enter the serial number and press Enter to confirm. [1. Chinese 2. English 3. French]\n",
         [1]="Wrong parameters, please select again.\n",
         [2]="Warning: You didn't provide sav file(s) that needs distribution. Please drag save file(s) onto this program or enter save filename(s) in the command line as follows.\n"
             "Usage: PRNMDTool.exe [file1] [file2] ...\n\n",
@@ -182,5 +183,94 @@ const char *TextOfPRNMDTool[TOOL_LANGUAGE_COUNTS][TOOL_TEXTS_COUNTS] =
         [71]="\nThe Manaphy mission of this Ranger1 sav has been reset to the state where the egg hasn't been received.\n",
         [72]="\nThe Manaphy mission of this Ranger1 sav has been reset to the state where the egg has been received but not sent to DPPtHGSS.\n",
         [73]="\nNote: You need to finish game before you can perform operations related to the Manaphy mission.\n"
+    },
+
+    [TOOL_LANGUAGE_FRENCH]=
+    {
+        [0]="Veuillez selectionner la langue d'affichage de cet outil, entrez le numero et appuyez sur Entree pour confirmer. [1. Chinois 2. Anglais 3. Francais]\n",
+        [1]="Parametre incorrect, veuillez selectionner a nouveau.\n",
+        [2]="Avertissement : Vous n'avez pas fourni de fichier(s) de sauvegarde a distribuer. Veuillez glisser le(s) fichier(s) de sauvegarde sur ce programme ou entrez le(s) nom(s) de fichier dans la ligne de commande comme suit.\n"
+            "Usage: PRNMDTool.exe [fichier1] [fichier2] ...\n\n",
+        [3]="Appuyez sur Entree pour quitter...\n",
+        [4]="%d fichier(s) vont etre traites.\n\n",
+        [5]="*---------------Traitement du fichier %d en cours---------------*\n",
+        [6]="Nom du fichier : ""%s"" \n\n",
+        [7]="Distribue_",
+        [8]="Verifiez le nom de votre fichier. Impossible d'ouvrir le fichier ""%s"".\n",
+        [9]="Le fichier %d a ete traite.\n\n",
+        [10]="Verifiez le nom de votre fichier. Impossible de creer le fichier ""%s"".\n",
+        [11]="Avertissement : Cette sauvegarde Ranger 1 est incorrecte.\n",
+        [12]="Avertissement : Sauvegarde incorrecte ou sauvegarde de Ranger 1, 2, 3 sans progression de jeu. Impossible de la lire.\n",
+        [13]="Version de la sauvegarde : Ranger %d .\n",
+        [14]="Version de la sauvegarde (& langue) : Ranger %d (jp).\n",
+        [15]="Version de la sauvegarde (& langue) : Ranger %d (oversea).\n",
+        [16]="Version de la sauvegarde (& langue) : Ranger %d (us-en).\n",
+        [17]="Version de la sauvegarde (& langue) : Ranger %d (eu-en).\n",
+        [18]="Version de la sauvegarde (& langue) : Ranger %d (eu-fr).\n",
+        [19]="Version de la sauvegarde (& langue) : Ranger %d (eu-it).\n",
+        [20]="Version de la sauvegarde (& langue) : Ranger %d (eu-de).\n",
+        [21]="Version de la sauvegarde (& langue) : Ranger %d (eu-sp).\n",
+        [22]="\nCe fichier n'a pas besoin d'etre redistribue.\n",
+        [23]="\nVoir le fichier : ""%s"" \n",
+        [24]="*============ %d fichier(s) traite(s) au total============*\n\n",
+        [25]="*** Note : Une sauvegarde Ranger 1 version internationale a ete detectee, elle n'a pas besoin d'etre distribuee. Voir ci-dessus pour savoir comment debloquer les missions sur Ranger 1 version internationale.\n\n",
+        [26]="Impossible d'ouvrir le fichier.\n\n",
+        [27]="Distribue ! MissionD001 : Recuperer l'Oeuf Precieux !\n",
+        [28]="Distribue ! MissionD002 : Gagner la Confiance de Deoxys ?!\n",
+        [29]="Distribue ! MissionD003 : Sauver Celebi !\n",
+        [30]="Distribue ! MissionD004 : Trouver Mew, le Fantome !\n",
+        [31]="Deja obtenu ! MissionD001 deja recue : Recuperer l'Oeuf Precieux !\n",
+        [32]="Deja obtenu ! MissionD002 deja recue : Gagner la Confiance de Deoxys ?!\n",
+        [33]="Deja obtenu ! MissionD003 deja recue : Sauver Celebi !\n",
+        [34]="Deja obtenu ! MissionD004 deja recue : Trouver Mew, le Fantome !\n",
+        [35]="Note : Ranger 1 version internationale n'a pas besoin de distribution.\n"
+             "      Apres avoir termine le jeu, Ranger Net debloquera automatiquement 3 missions. Vous devez terminer chaque mission pour debloquer la suivante.\n"
+             "      Apres avoir termine le jeu, maintenez R+X+Gauche sur l'ecran Ranger Net pour debloquer l'option ""Entrer le mot de passe"".\n\n"
+             "      Entrez ensuite le code suivant pour debloquer la mission Manaphy :\n"
+             "      *US-en: P8M2-9D6F-43H7\n"
+             "      *EU-en: Mg35-Cpb8-4FW8\n"
+             "      *EU-fr: DY4g-k28S-QB9F\n"
+             "      *EU-de: R3d4-cv2S-WC7W\n"
+             "      *EU-sp: C58f-t3WT-Vn79\n"
+             "      *EU-it: FH38-fwD8-5S2a\n"
+             "\n",
+        [36]="Distribue ! Mission Speciale 1 : Recuperer l'Oeuf de Manaphy !\n",
+        [37]="Distribue ! Mission Speciale 2 : Sauver Riolu kidnappe !\n",
+        [38]="Distribue ! Mission Speciale 3 : Liberer la Tour !\n",
+        [39]="Distribue ! Mission Supplementaire 1 : Dialga dans la Vallee Hia !?\n",
+        [40]="Distribue ! Mission Supplementaire 2 : Palkia dans le Desert Haruba !?\n",
+        [41]="Distribue ! Mission Supplementaire 3 : Pour la Mariee et Shaymin !\n",
+        [42]="Deja obtenu ! Mission Speciale 1 deja recue : Recuperer l'Oeuf de Manaphy !\n",
+        [43]="Deja obtenu ! Mission Speciale 2 deja recue : Sauver Riolu kidnappe !\n",
+        [44]="Deja obtenu ! Mission Speciale 3 deja recue : Liberer la Tour !\n",
+        [45]="Deja obtenu ! Mission Supplementaire 1 deja recue : Dialga dans la Vallee Hia !?\n",
+        [46]="Deja obtenu ! Mission Supplementaire 2 deja recue : Palkia dans le Desert Haruba !?\n",
+        [47]="Deja obtenu ! Mission Supplementaire 3 deja recue : Pour la Mariee et Shaymin !\n",
+        [48]="Distribue ! Mission Speciale 1 : Proteger la Sphere Bleue !\n",
+        [49]="Distribue ! Mission Speciale 2 : Enqueter sur l'Etrange Eruption !!\n",
+        [50]="Distribue ! Mission Speciale 3 : Sauver le Shaymin Perdu !!\n",
+        [51]="Distribue ! Mission Supplementaire 1 : Trouver l'Orbe Griseuse de Giratina !!\n",
+        [52]="Distribue ! Mission Supplementaire 2 : Serment a Arceus !\n",
+        [53]="Distribue ! Mission Speciale 4 : Deoxys et l'Etrange Temple !\n",
+        [54]="Deja obtenu ! Mission Speciale 1 deja recue : Proteger la Sphere Bleue !\n",
+        [55]="Deja obtenu ! Mission Speciale 2 deja recue : Enqueter sur l'Etrange Eruption !!\n",
+        [56]="Deja obtenu ! Mission Speciale 3 deja recue : Sauver le Shaymin Perdu !!\n",
+        [57]="Deja obtenu ! Mission Supplementaire 1 deja recue : Trouver l'Orbe Griseuse de Giratina !!\n",
+        [58]="Deja obtenu ! Mission Supplementaire 2 deja recue : Serment a Arceus !\n",
+        [59]="Deja obtenu ! Mission Speciale 4 deja recue : Deoxys et l'Etrange Temple !\n",
+        [60]="Ou souhaitez-vous creer un fichier de sauvegarde initial contenant les donnees de distribution ? Entrez le numero et appuyez sur Entree pour confirmer. [1.Oui 2.Non]\n:",
+        [61]="\nQuelle sauvegarde initiale de distribution souhaitez-vous creer ? Entrez le numero et appuyez sur Entree pour confirmer.\n[1.Ranger1(jp) 2.Ranger2_Shadows_of_Almia(jp&oversea) 3.Ranger3_Guardian_Signs(jp) 4.Ranger3_Guardian_Signs(oversea)]\n:",
+        [62]="SauvegardeInitiale_Ranger1_jp.sav",
+        [63]="SauvegardeInitiale_Ranger2_Shadows_of_Almia_jp&oversea.sav",
+        [64]="SauvegardeInitiale_Ranger3_Guardian_Signs_jp.sav",
+        [65]="SauvegardeInitiale_Ranger3_Guardian_Signs_oversea.sav",
+        [66]="Impossible de creer le fichier.\n",
+        [67]="\nLa sauvegarde initiale de distribution a ete creee, voir le fichier : ""%s"" \n",
+        [68]="\nSouhaitez-vous continuer a creer d'autres sauvegardes initiales de distribution ? Entrez le numero et appuyez sur Entree pour confirmer. [1.Oui 2.Non]\n:",
+        [69]="\nIl a ete detecte que la mission Manaphy de ce Ranger 1 a recu des oeufs, mais ne les a pas encore transferes vers DPPtHGSS.\nSouhaitez-vous reinitialiser la mission a l'etat ou l'oeuf n'a pas encore ete recu ?\nEntrez le numero et appuyez sur Entree pour confirmer. [1.Oui 2.Non]\n:",
+        [70]="\nIl a ete detecte que la mission Manaphy de ce Ranger 1 a transfere l'Oeuf de Manaphy vers DPPtHGSS.\nSouhaitez-vous reinitialiser la mission a l'etat ou l'oeuf n'a pas encore ete recu,\nou a l'etat ou l'oeuf a ete recu mais pas encore transfere vers DPPtHGSS ?\nEntrez le numero et appuyez sur Entree pour confirmer.\n[1.Reinitialiser a l'etat ou l'oeuf n'a pas encore ete recu\n 2.Reinitialiser a l'etat ou l'oeuf a ete recu mais pas encore envoye vers DPPtHGSS.\n 3.Non]\n:",
+        [71]="\nLa mission Manaphy de cette sauvegarde Ranger 1 a ete reinitialisee a l'etat ou l'oeuf n'a pas encore ete recu.\n",
+        [72]="\nLa mission Manaphy de cette sauvegarde Ranger 1 a ete reinitialisee a l'etat ou l'oeuf a ete recu mais pas encore envoye vers DPPtHGSS.\n",
+        [73]="\nNote : Vous devez terminer le jeu avant de pouvoir effectuer des operations liees a la mission Manaphy.\n"
     },
 };
